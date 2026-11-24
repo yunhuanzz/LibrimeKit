@@ -448,8 +448,8 @@ MODULE
 # (fork note): boost-iosx no longer produces a `dest/` install prefix (it emits
 # xcframeworks). Build a BOOST_ROOT layout (include/ + lib/) from the 4
 # xcframeworks + headers so librime's CMake find_package(Boost) can locate it.
-# The libs are lipo'd fat (device arm64 + simulator x86_64) because librime is
-# built twice (SIMULATOR64 + OS64) against the same BOOST_ROOT.
+# The libs are lipo'd fat (device arm64 + simulator) because librime is
+# built twice (SIMULATORARM64 + OS64) against the same BOOST_ROOT.
 if [[ ! -d ${RIME_ROOT}/.boost ]]
 then
   mkdir -p ${RIME_ROOT}/.boost/dest/include ${RIME_ROOT}/.boost/dest/lib
@@ -474,9 +474,24 @@ then
   fi
   cp -R "${BOOST_HEADERS}" "${RIME_ROOT}/.boost/dest/include/"
   for lib in atomic filesystem regex; do
+    # Simulator slice: the boost build follows the host arch (HOST_ARC).
+    # On Apple Silicon hosts it produces ios-arm64-simulator; on Intel
+    # hosts ios-x86_64-simulator; if both were built, the fat
+    # ios-arm64_x86_64-simulator. Pick whichever slice actually exists.
+    SIM_SLICE=""
+    for cand in ios-arm64_x86_64-simulator ios-arm64-simulator ios-x86_64-simulator; do
+      if [[ -f "${RIME_ROOT}/boost-iosx/frameworks/boost_${lib}.xcframework/${cand}/libboost_${lib}.a" ]]; then
+        SIM_SLICE="${cand}"
+        break
+      fi
+    done
+    if [[ -z "${SIM_SLICE}" ]]; then
+      echo "error: no iOS simulator slice found for boost_${lib}" >&2
+      exit 1
+    fi
     lipo -create \
       ${RIME_ROOT}/boost-iosx/frameworks/boost_${lib}.xcframework/ios-arm64/libboost_${lib}.a \
-      ${RIME_ROOT}/boost-iosx/frameworks/boost_${lib}.xcframework/ios-x86_64-simulator/libboost_${lib}.a \
+      ${RIME_ROOT}/boost-iosx/frameworks/boost_${lib}.xcframework/${SIM_SLICE}/libboost_${lib}.a \
       -output ${RIME_ROOT}/.boost/dest/lib/libboost_${lib}.a
   done
 fi
@@ -489,16 +504,21 @@ make xcode/ios/deps
 # SIMULATOR64: to build for iOS simulator 64 bit (x86_64)
 # SIMULATORARM64: to build for iOS simulator 64 bit (arm64)
 # MAC: to build for macOS (x86_64)
-export PLATFORM=SIMULATOR64
+# (fork note, 2026-11-25): use SIMULATORARM64, not SIMULATOR64. The boost
+# xcframework built on Apple Silicon hosts only has an arm64 simulator
+# slice (boost-iosx expands `iossim` to `iossim-$HOST_ARC`), so there is
+# no x86_64 simulator Boost lib for a SIMULATOR64 (x86_64) librime build
+# to link against. Apple Silicon is the modern simulator target.
+export PLATFORM=SIMULATORARM64
 
 # temp save *.a
 rm -rf ${RIME_ROOT}/lib && mkdir -p ${RIME_ROOT}/lib ${RIME_ROOT}/lib/headers
 cp ${RIME_ROOT}/librime/src/*.h ${RIME_ROOT}/lib/headers
 
-# librime build: iOS simulator 64 bit (x86_64)
+# librime build: iOS simulator 64 bit (arm64)
 rm -rf ${RIME_ROOT}/librime/build ${RIME_ROOT}/librime/dist
 make xcode/ios/dist
-cp -f ${RIME_ROOT}/librime/dist/lib/librime.a ${RIME_ROOT}/lib/librime_simulator_x86_64.a
+cp -f ${RIME_ROOT}/librime/dist/lib/librime.a ${RIME_ROOT}/lib/librime_simulator_arm64.a
 # cp -f ${RIME_ROOT}/librime/build/plugins/lua/rime.build/Release/rime-lua-objs.build/librime-lua-objs.a ${RIME_ROOT}/lib/librime_lua_x86_64.a
 
 # librime build: arm64
@@ -511,7 +531,7 @@ cp -f ${RIME_ROOT}/librime/dist/lib/librime.a ${RIME_ROOT}/lib/librime_arm64.a
 # transform *.a to xcframework
 rm -rf ${RIME_ROOT}/Frameworks/librime.xcframework
 xcodebuild -create-xcframework \
- -library ${RIME_ROOT}/lib/librime_simulator_x86_64.a -headers ${RIME_ROOT}/lib/headers \
+ -library ${RIME_ROOT}/lib/librime_simulator_arm64.a -headers ${RIME_ROOT}/lib/headers \
  -library ${RIME_ROOT}/lib/librime_arm64.a -headers ${RIME_ROOT}/lib/headers \
  -output ${RIME_ROOT}/Frameworks/librime.xcframework
 
