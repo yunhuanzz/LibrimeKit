@@ -18,7 +18,7 @@ endif
 
 boost-build: cocoapods
 	$(info boost build begin)
-	cd boost-iosx && ./scripts/build.sh -p=ios,iossim-x86_64 -l=atomic,filesystem,regex,system
+	${MAKE} -C boost-iosx build
 	mkdir -p Frameworks && \
 		cp -rf ${BOOST_FRAMEWORK_PATH}/boost_atomic.xcframework Frameworks && \
 		cp -rf ${BOOST_FRAMEWORK_PATH}/boost_filesystem.xcframework Frameworks && \
