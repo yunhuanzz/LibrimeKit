@@ -446,13 +446,18 @@ MODULE
 
 # librime dependences build
 # (fork note): boost-iosx no longer produces a `dest/` install prefix (it emits
-# xcframeworks). Build a BOOST_ROOT layout (include/ + lib/) from the 4
+# xcframeworks). Build BOOST_ROOT layouts (include/ + lib/) from the
 # xcframeworks + headers so librime's CMake find_package(Boost) can locate it.
-# The libs are lipo'd fat (device arm64 + simulator) because librime is
-# built twice (SIMULATORARM64 + OS64) against the same BOOST_ROOT.
+# NOTE: do NOT lipo the device and simulator slices together. On Apple
+# Silicon both slices are arm64, and lipo refuses two slices with the same
+# architecture ("have the same architectures (arm64) and can't be in the
+# same fat output file"). Instead build TWO prefixes, one per platform,
+# each holding the single-arch .a for its platform (copied, not lipo'd),
+# and point BOOST_ROOT at the right one before each librime build below.
 if [[ ! -d ${RIME_ROOT}/.boost ]]
 then
   mkdir -p ${RIME_ROOT}/.boost/dest/include ${RIME_ROOT}/.boost/dest/lib
+  mkdir -p ${RIME_ROOT}/.boost/dest-device/include ${RIME_ROOT}/.boost/dest-device/lib
   # Locate the Boost headers dir (the directory directly containing
   # version.hpp). The layout varies between boost-iosx versions: it may be
   # frameworks/Headers/boost/boost (headers subdir of the copied source
@@ -473,6 +478,7 @@ then
     exit 1
   fi
   cp -R "${BOOST_HEADERS}" "${RIME_ROOT}/.boost/dest/include/"
+  cp -R "${BOOST_HEADERS}" "${RIME_ROOT}/.boost/dest-device/include/"
   for lib in atomic filesystem regex; do
     # Simulator slice: the boost build follows the host arch (HOST_ARC).
     # On Apple Silicon hosts it produces ios-arm64-simulator; on Intel
@@ -489,10 +495,12 @@ then
       echo "error: no iOS simulator slice found for boost_${lib}" >&2
       exit 1
     fi
-    lipo -create \
-      ${RIME_ROOT}/boost-iosx/frameworks/boost_${lib}.xcframework/ios-arm64/libboost_${lib}.a \
-      ${RIME_ROOT}/boost-iosx/frameworks/boost_${lib}.xcframework/${SIM_SLICE}/libboost_${lib}.a \
-      -output ${RIME_ROOT}/.boost/dest/lib/libboost_${lib}.a
+    # Simulator prefix gets the simulator slice; device prefix gets the
+    # device slice. Copy, do NOT lipo (lipo refuses two arm64 slices).
+    cp -f ${RIME_ROOT}/boost-iosx/frameworks/boost_${lib}.xcframework/${SIM_SLICE}/libboost_${lib}.a \
+      ${RIME_ROOT}/.boost/dest/lib/libboost_${lib}.a
+    cp -f ${RIME_ROOT}/boost-iosx/frameworks/boost_${lib}.xcframework/ios-arm64/libboost_${lib}.a \
+      ${RIME_ROOT}/.boost/dest-device/lib/libboost_${lib}.a
   done
 fi
 export BOOST_ROOT=$RIME_ROOT/.boost/dest
@@ -523,6 +531,10 @@ cp -f ${RIME_ROOT}/librime/dist/lib/librime.a ${RIME_ROOT}/lib/librime_simulator
 
 # librime build: arm64
 export PLATFORM=OS64
+# (fork note): point BOOST_ROOT at the device prefix for this build.
+# The simulator prefix (.boost/dest) holds arm64-simulator libs; the
+# device build needs the arm64-device libs in .boost/dest-device.
+export BOOST_ROOT=$RIME_ROOT/.boost/dest-device
 rm -rf ${RIME_ROOT}/librime/build ${RIME_ROOT}/librime/dist
 make xcode/ios/dist
 cp -f ${RIME_ROOT}/librime/dist/lib/librime.a ${RIME_ROOT}/lib/librime_arm64.a
