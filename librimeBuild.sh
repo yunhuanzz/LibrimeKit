@@ -454,7 +454,7 @@ if [[ ! -d ${RIME_ROOT}/.boost ]]
 then
   mkdir -p ${RIME_ROOT}/.boost/dest/include ${RIME_ROOT}/.boost/dest/lib
   cp -R ${RIME_ROOT}/boost-iosx/frameworks/Headers/boost/boost ${RIME_ROOT}/.boost/dest/include/
-  for lib in atomic filesystem regex system; do
+  for lib in atomic filesystem regex; do
     lipo -create \
       ${RIME_ROOT}/boost-iosx/frameworks/boost_${lib}.xcframework/ios-arm64/libboost_${lib}.a \
       ${RIME_ROOT}/boost-iosx/frameworks/boost_${lib}.xcframework/ios-x86_64-simulator/libboost_${lib}.a \
