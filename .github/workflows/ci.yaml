@@ -13,8 +13,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
+        # NOTE (fork, 2026-11-24): do NOT enable submodules here. The pinned
+        # boost-iosx commit d7517e2 no longer exists upstream (force-pushed
+        # away), so a recursive submodule fetch fails with "not our ref".
+        # Clone the submodules manually at valid refs in the next step.
+
+      - name: Checkout submodules
+        run: |
+          git clone --depth 1 https://github.com/imfuxiao/boost-iosx.git boost-iosx
+          git clone https://github.com/rime/librime.git librime
+          git -C librime checkout 08dd95f5d9282346f0d4a3e8fc6b20811dc3d063
 
       - name: Build Boost
         run: |
