@@ -33,7 +33,12 @@ librime-check:
 	@[ -f `which cmake` ] || { echo "Install cmake first"; exit 1; }
 
 librime-build: librime-check
-	git submodule update --init
+	# NOTE (fork, 2026-11-24): do NOT run `git submodule update --init` here.
+	# The pinned boost-iosx commit d7517e2 no longer exists upstream
+	# (force-pushed away), so updating the root submodules fails with
+	# "not our ref". CI clones both submodules manually at valid refs
+	# (see ci.yaml "Checkout submodules"); librime's own submodules are
+	# initialized inside librimeBuild.sh.
 	${mkfile_dir}/librimeBuild.sh
 
 librime-clean:
