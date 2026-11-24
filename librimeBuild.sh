@@ -445,10 +445,21 @@ MODULE
 
 
 # librime dependences build
+# (fork note): boost-iosx no longer produces a `dest/` install prefix (it emits
+# xcframeworks). Build a BOOST_ROOT layout (include/ + lib/) from the 4
+# xcframeworks + headers so librime's CMake find_package(Boost) can locate it.
+# The libs are lipo'd fat (device arm64 + simulator x86_64) because librime is
+# built twice (SIMULATOR64 + OS64) against the same BOOST_ROOT.
 if [[ ! -d ${RIME_ROOT}/.boost ]]
 then
-  mkdir ${RIME_ROOT}/.boost
-  cp -R ${RIME_ROOT}/boost-iosx/dest ${RIME_ROOT}/.boost
+  mkdir -p ${RIME_ROOT}/.boost/dest/include ${RIME_ROOT}/.boost/dest/lib
+  cp -R ${RIME_ROOT}/boost-iosx/frameworks/Headers/boost/boost ${RIME_ROOT}/.boost/dest/include/
+  for lib in atomic filesystem regex system; do
+    lipo -create \
+      ${RIME_ROOT}/boost-iosx/frameworks/boost_${lib}.xcframework/ios-arm64/libboost_${lib}.a \
+      ${RIME_ROOT}/boost-iosx/frameworks/boost_${lib}.xcframework/ios-x86_64-simulator/libboost_${lib}.a \
+      -output ${RIME_ROOT}/.boost/dest/lib/libboost_${lib}.a
+  done
 fi
 export BOOST_ROOT=$RIME_ROOT/.boost/dest
 make xcode/ios/deps
