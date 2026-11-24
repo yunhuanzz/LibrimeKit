@@ -34,9 +34,6 @@ let package = Package(
       name: "boost_regex",
       path: "Frameworks/boost_regex.xcframework"),
     .binaryTarget(
-      name: "boost_system",
-      path: "Frameworks/boost_system.xcframework"),
-    .binaryTarget(
       name: "libglog",
       path: "Frameworks/libglog.xcframework"),
     .binaryTarget(
@@ -58,7 +55,6 @@ let package = Package(
         "boost_atomic",
         "boost_filesystem",
         "boost_regex",
-        "boost_system",
         "libglog",
         "libleveldb",
         "libmarisa",
