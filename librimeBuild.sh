@@ -25,6 +25,24 @@ rm -rf ${RIME_ROOT}/librime/src/rime/lua && \
   mkdir ${RIME_ROOT}/librime/src/rime/lua && \
   cp -R ${RIME_ROOT}/librime/plugins/lua/src/* ${RIME_ROOT}/librime/src/rime/lua && \
   rm -rf ${RIME_ROOT}/librime/plugins/lua
+
+# install octagram plugin (local language model; same inline pattern as lua:
+# iOS static linking drops unreferenced module initializers, so the plugin
+# sources are copied into librime/src/rime/ and the "grammar" component is
+# registered in core_module.cc below instead of the dynamic plugin mechanism.
+# Only the 6 implementation files are copied; grammar_module.cc is left out
+# on purpose (its RIME_REGISTER_MODULE would register "grammar" a second time).
+rm -rf ${RIME_ROOT}/librime/plugins/octagram
+${RIME_ROOT}/librime/install-plugins.sh lotem/librime-octagram@57d18b9f58
+rm -rf ${RIME_ROOT}/librime/src/rime/octagram && \
+  mkdir ${RIME_ROOT}/librime/src/rime/octagram && \
+  cp ${RIME_ROOT}/librime/plugins/octagram/src/gram_db.h ${RIME_ROOT}/librime/plugins/octagram/src/gram_db.cc ${RIME_ROOT}/librime/plugins/octagram/src/gram_encoding.h ${RIME_ROOT}/librime/plugins/octagram/src/gram_encoding.cc ${RIME_ROOT}/librime/plugins/octagram/src/octagram.h ${RIME_ROOT}/librime/plugins/octagram/src/octagram.cc ${RIME_ROOT}/librime/src/rime/octagram/ && \
+  rm -rf ${RIME_ROOT}/librime/plugins/octagram
+
+# librime-octagram master targets newer librime (rime::path / MappedFile::file_path);
+# 1.8.5 has neither (MappedFile takes string, accessor is file_name()).
+# Minimal compat shim, upstream files only, no behavior change.
+patch -d ${RIME_ROOT}/librime/src/rime/octagram -p1 < ${RIME_ROOT}/gram_db-1.8.5-compat.patch
   
 # TODO: begin 改写文件内容
 cat << "MODULE" | tee ${RIME_ROOT}/librime/src/rime/core_module.cc
@@ -48,6 +66,7 @@ cat << "MODULE" | tee ${RIME_ROOT}/librime/src/rime/core_module.cc
 #include <cstdio>
 #include "lua/lib/lua_templates.h"
 #include "lua/lua_gears.h"
+#include "octagram/octagram.h"
 
 #include <rime/gear/abc_segmentor.h>
 #include <rime/gear/affix_segmentor.h>
@@ -218,6 +237,13 @@ static void rime_core_initialize() {
   r.Register("lua_filter", new LuaComponent<LuaFilter>(lua));
   r.Register("lua_segmentor", new LuaComponent<LuaSegmentor>(lua));
   r.Register("lua_processor", new LuaComponent<LuaProcessor>(lua));
+
+  // grammar component from the octagram plugin (see include above).
+  // Registered here (not via the plugin's own grammar_module.cc) for the
+  // same reason as lua/gears above: static iOS linking drops unreferenced
+  // module initializers, so only core_module.cc registrations survive.
+  LOG(INFO) << "registering components from module 'grammar'.";
+  r.Register("grammar", new OctagramComponent);
 }
 
 static void rime_core_finalize() {
@@ -243,6 +269,7 @@ aux_source_directory(rime/lever rime_levers_src)
 aux_source_directory(rime/lua rime_lua_src)
 aux_source_directory(rime/lua/lib rime_lua_lib_src)
 aux_source_directory(rime/lua/lib/lua rime_lua_lib_lua_src)
+aux_source_directory(rime/octagram rime_octagram_src)
 if(rime_plugins_library)
   aux_source_directory(../plugins rime_plugins_src)
 endif()
@@ -254,6 +281,7 @@ set(rime_core_module_src
   ${rime_lua_src}
   ${rime_lua_lib_src}
   ${rime_lua_lib_lua_src}
+  ${rime_octagram_src}
 )
 set(rime_dict_module_src
   ${rime_algo_src}
