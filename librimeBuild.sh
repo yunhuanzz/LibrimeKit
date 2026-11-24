@@ -20,7 +20,7 @@ fi
 # 可能是个人能力问题, 使用官方的方法始终无法加载lua模块. 临时使用此方法. 希望以后可以解决这个问题.
 # 注意: 改写代码后发现 gear 模块也无法加载. 所以代码中同时将gear模块添加进去.
 rm -rf ${RIME_ROOT}/librime/plugins/lua
-${RIME_ROOT}/librime/install-plugins.sh imfuxiao/librime-lua@main
+${RIME_ROOT}/librime/install-plugins.sh imfuxiao/librime-lua@master
 rm -rf ${RIME_ROOT}/librime/src/rime/lua && \
   mkdir ${RIME_ROOT}/librime/src/rime/lua && \
   cp -R ${RIME_ROOT}/librime/plugins/lua/src/* ${RIME_ROOT}/librime/src/rime/lua && \
