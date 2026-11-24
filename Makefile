@@ -22,8 +22,7 @@ boost-build: cocoapods
 	mkdir -p Frameworks && \
 		cp -rf ${BOOST_FRAMEWORK_PATH}/boost_atomic.xcframework Frameworks && \
 		cp -rf ${BOOST_FRAMEWORK_PATH}/boost_filesystem.xcframework Frameworks && \
-		cp -rf ${BOOST_FRAMEWORK_PATH}/boost_regex.xcframework Frameworks && \
-		cp -rf ${BOOST_FRAMEWORK_PATH}/boost_system.xcframework Frameworks
+		cp -rf ${BOOST_FRAMEWORK_PATH}/boost_regex.xcframework Frameworks
 
 boost-clean:
 	${MAKE} -C boost-iosx clean
