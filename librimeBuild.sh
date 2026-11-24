@@ -453,7 +453,26 @@ MODULE
 if [[ ! -d ${RIME_ROOT}/.boost ]]
 then
   mkdir -p ${RIME_ROOT}/.boost/dest/include ${RIME_ROOT}/.boost/dest/lib
-  cp -R ${RIME_ROOT}/boost-iosx/frameworks/Headers/boost/boost ${RIME_ROOT}/.boost/dest/include/
+  # Locate the Boost headers dir (the directory directly containing
+  # version.hpp). The layout varies between boost-iosx versions: it may be
+  # frameworks/Headers/boost/boost (headers subdir of the copied source
+  # tree), frameworks/Headers/boost (headers placed directly), or the
+  # source tree boost/boost. Copy it to include/ as include/boost/.
+  BOOST_HEADERS=""
+  for cand in \
+    "${RIME_ROOT}/boost-iosx/frameworks/Headers/boost/boost" \
+    "${RIME_ROOT}/boost-iosx/frameworks/Headers/boost" \
+    "${RIME_ROOT}/boost-iosx/boost/boost"; do
+    if [[ -f "${cand}/version.hpp" ]]; then
+      BOOST_HEADERS="${cand}"
+      break
+    fi
+  done
+  if [[ -z "${BOOST_HEADERS}" ]]; then
+    echo "error: Boost headers not found (looked in frameworks/Headers and boost/)" >&2
+    exit 1
+  fi
+  cp -R "${BOOST_HEADERS}" "${RIME_ROOT}/.boost/dest/include/"
   for lib in atomic filesystem regex; do
     lipo -create \
       ${RIME_ROOT}/boost-iosx/frameworks/boost_${lib}.xcframework/ios-arm64/libboost_${lib}.a \
