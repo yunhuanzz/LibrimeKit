@@ -38,6 +38,20 @@ jobs:
         run: |
           make boost-build
 
+      # NOTE (fork, 2026-11-25): the macos-latest runner now ships CMake 4.x,
+      # which removed compatibility with CMake < 3.5. The old deps (glog,
+      # leveldb, marisa, opencc, yaml-cpp) declare cmake_minimum_required
+      # below 3.5, so their configure fails with "Compatibility with CMake
+      # < 3.5 has been removed". Pin CMake 3.31 (newer than the 2023 build
+      # used, still supports the old minimums) for the rest of the job.
+      - name: Install CMake 3.31
+        run: |
+          curl -L -o /tmp/cmake.tar.gz https://github.com/Kitware/CMake/releases/download/v3.31.6/cmake-3.31.6-macos-universal.tar.gz
+          tar -xzf /tmp/cmake.tar.gz -C /tmp
+          CMAKE_DIR=$(ls -d /tmp/cmake-*-macos-universal | head -1)
+          echo "$CMAKE_DIR/CMake.app/Contents/bin" >> "$GITHUB_PATH"
+          "$CMAKE_DIR/CMake.app/Contents/bin/cmake" --version
+
       - name: Build Librime
         run: |
           make librime-build
