@@ -26,6 +26,19 @@ rm -rf ${RIME_ROOT}/librime/src/rime/lua && \
   cp -R ${RIME_ROOT}/librime/plugins/lua/src/* ${RIME_ROOT}/librime/src/rime/lua && \
   rm -rf ${RIME_ROOT}/librime/plugins/lua
 
+# librime-lua@master now uses std::filesystem::exists and an unqualified
+# `path` in types.cc, but includes neither <filesystem> nor the `path` alias
+# newer librime provides (it relied on a transitive include that no longer
+# exists). librime 1.8.5 provides neither, so patch the installed copy.
+# The fallback COMPAT specialization (instantiated with Deployer, whose dirs
+# are plain strings in 1.8.5) needs the include; the SFINAE-disabled
+# specialization still needs `path` to parse, hence the using-declaration.
+types_cc=${RIME_ROOT}/librime/src/rime/lua/types.cc
+grep -q '#include <filesystem>' "$types_cc" || \
+  perl -pi -e 's/#include <chrono>/#include <chrono>\n#include <filesystem>/' "$types_cc"
+grep -q 'using std::filesystem::path;' "$types_cc" || \
+  perl -pi -e 's/^using namespace rime;$/using namespace rime;\nusing std::filesystem::path;/' "$types_cc"
+
 # fetch vendored lua 5.4 interpreter. The plugin's own CMakeLists would use
 # thirdparty/lua5.4, but this inline build globs src/rime/lua/lib/lua/ for
 # the interpreter sources (see src/CMakeLists.txt below). Without it,
