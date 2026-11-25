@@ -1442,7 +1442,7 @@ diff --git a/xcode.mk b/xcode.mk
 index f80d9b6..5474685 100644
 --- a/xcode.mk
 +++ b/xcode.mk
-@@ -10,6 +10,69 @@ endif
+@@ -10,6 +10,70 @@ endif
  # https://cmake.org/cmake/help/latest/variable/CMAKE_OSX_SYSROOT.html
  export SDKROOT ?= $(shell xcrun --sdk macosx --show-sdk-path)
  
@@ -1473,6 +1473,7 @@ index f80d9b6..5474685 100644
 +# RIME_TEST_BUNDLE_IDENTIFIER: 环境变量, 设置 rime_test.xcodeproj 的 bundle identifier 值
 +XCODE_IOS_CROSS_COMPILE_CMAKE_FLAGS = -DCMAKE_TOOLCHAIN_FILE=$(CURDIR)/cmake/toolchain/ios.cmake \
 +	-DPLATFORM=$(PLATFORM) \
++	-DDEPLOYMENT_TARGET=$(MINVERSION) \
 +	-DCMAKE_OSX_DEPLOYMENT_TARGET=$(MINVERSION) \
 +	-DENABLE_BITCODE=NO \
 +	-DDEVELOPMENT_TEAM=$(DEVELOPMENT_TEAM) \
