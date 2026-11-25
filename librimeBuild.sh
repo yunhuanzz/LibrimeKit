@@ -313,6 +313,13 @@ aux_source_directory(rime/lever rime_levers_src)
 aux_source_directory(rime/lua rime_lua_src)
 aux_source_directory(rime/lua/lib rime_lua_lib_src)
 aux_source_directory(rime/lua/lib/lua rime_lua_lib_lua_src)
+# iOS has no system(): the vendored lua 5.4 loslib.c calls it via l_system,
+# and the iOS SDK marks system() unavailable (run #41). Lua's own loslib.c
+# already handles LUA_USE_IOS (os.execute becomes a stub returning -1).
+# Scope it to loslib.c only: the other vendored lua files compiled fine
+# in #41 without it, exactly as in the v0.1.0 build (whose librime.a
+# contains loslib.o), so nothing else changes.
+set_source_files_properties(rime/lua/lib/lua/loslib.c PROPERTIES COMPILE_DEFINITIONS LUA_USE_IOS)
 aux_source_directory(rime/octagram rime_octagram_src)
 if(rime_plugins_library)
   aux_source_directory(../plugins rime_plugins_src)
