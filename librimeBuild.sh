@@ -39,6 +39,19 @@ grep -q '#include <filesystem>' "$types_cc" || \
 grep -q 'using std::filesystem::path;' "$types_cc" || \
   perl -pi -e 's/^using namespace rime;$/using namespace rime;\nusing std::filesystem::path;/' "$types_cc"
 
+# C++17 side effect (run #39): the plugin's optional.h switches to
+# `using std::optional;` at C++17, while `using namespace rime;` still
+# brings in rime::optional (boost::optional). A bare `optional<...>` is
+# then ambiguous (types_ext.cc:272: `reference to 'optional' is ambiguous`).
+# The plugin's own C++17 design means std::optional (optional.h includes
+# luatype_std_optional.h at C++17), so qualify every bare use in the
+# plugin's top-level sources. The regex only matches unqualified
+# `optional<` (never std::/boost::/rime::optional, never the
+# using-declarations in optional.h which have no `<`), so it is
+# idempotent and a no-op where the name already resolved to std.
+perl -pi -e 's/(?<![\w:])optional</std::optional</g' \
+  ${RIME_ROOT}/librime/src/rime/lua/*.cc ${RIME_ROOT}/librime/src/rime/lua/*.h
+
 # fetch vendored lua 5.4 interpreter. The plugin's own CMakeLists would use
 # thirdparty/lua5.4, but this inline build globs src/rime/lua/lib/lua/ for
 # the interpreter sources (see src/CMakeLists.txt below). Without it,
