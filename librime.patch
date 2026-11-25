@@ -10,6 +10,19 @@ index 651cad7..a613c96 100644
 +ios
 +*.tar.bz2
 \ No newline at end of file
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index c36bca2e..bdd4d1a6 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -62,7 +62,7 @@ if(NOT BOOST_USE_CXX11)
+   add_definitions("-DBOOST_NO_CXX11_SCOPED_ENUMS")
+ endif()
+ 
+-set(BOOST_COMPONENTS filesystem regex system)
++set(BOOST_COMPONENTS filesystem regex)
+ 
+ if(BOOST_USE_SIGNALS2)
+   set(RIME_BOOST_SIGNALS2 1)
 diff --git a/README-iOS.md b/README-iOS.md
 new file mode 100644
 index 0000000..81d429e
