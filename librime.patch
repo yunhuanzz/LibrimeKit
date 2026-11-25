@@ -14,6 +14,15 @@ diff --git a/CMakeLists.txt b/CMakeLists.txt
 index c36bca2e..bdd4d1a6 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
+@@ -3,7 +3,7 @@
+
+ project(rime)
+ cmake_minimum_required(VERSION 3.12)
+-set(CMAKE_CXX_STANDARD 14)
++set(CMAKE_CXX_STANDARD 17)
+ 
+ set(rime_version 1.8.5)
+ set(rime_soversion 1)
 @@ -62,7 +62,7 @@ if(NOT BOOST_USE_CXX11)
    add_definitions("-DBOOST_NO_CXX11_SCOPED_ENUMS")
  endif()
@@ -23,6 +32,15 @@ index c36bca2e..bdd4d1a6 100644
  
  if(BOOST_USE_SIGNALS2)
    set(RIME_BOOST_SIGNALS2 1)
+@@ -159,7 +159,7 @@
+
+ if(UNIX)
+-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+ endif()
+
+ if (NOT CMAKE_BUILD_PARALLEL_LEVEL)
+   include(ProcessorCount)
 diff --git a/README-iOS.md b/README-iOS.md
 new file mode 100644
 index 0000000..81d429e
