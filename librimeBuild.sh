@@ -26,6 +26,18 @@ rm -rf ${RIME_ROOT}/librime/src/rime/lua && \
   cp -R ${RIME_ROOT}/librime/plugins/lua/src/* ${RIME_ROOT}/librime/src/rime/lua && \
   rm -rf ${RIME_ROOT}/librime/plugins/lua
 
+# fetch vendored lua 5.4 interpreter. The plugin's own CMakeLists would use
+# thirdparty/lua5.4, but this inline build globs src/rime/lua/lib/lua/ for
+# the interpreter sources (see src/CMakeLists.txt below). Without it,
+# librime.a ends up with undefined lua symbols and <lua.h> is missing.
+# (In 2023 this worked because the Intel runner had a system lua.h in
+# /usr/local/include; Apple Silicon runners do not.)
+rm -rf ${RIME_ROOT}/librime/plugins/lua-thirdparty
+git clone --depth 1 -b thirdparty https://github.com/hchunhui/librime-lua.git ${RIME_ROOT}/librime/plugins/lua-thirdparty
+rm -rf ${RIME_ROOT}/librime/src/rime/lua/lib/lua
+cp -R ${RIME_ROOT}/librime/plugins/lua-thirdparty/lua5.4 ${RIME_ROOT}/librime/src/rime/lua/lib/lua
+rm -rf ${RIME_ROOT}/librime/plugins/lua-thirdparty
+
 # install octagram plugin (local language model; same inline pattern as lua:
 # iOS static linking drops unreferenced module initializers, so the plugin
 # sources are copied into librime/src/rime/ and the "grammar" component is
@@ -258,6 +270,12 @@ MODULE
 
 cat << "MODULE" | tee ${RIME_ROOT}/librime/src/CMakeLists.txt
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
+
+# lua plugin: the vendored lua 5.4 interpreter lives at rime/lua/lib/lua/;
+# its lua.h is included with angle brackets, so the directory must be on
+# the include path (do not rely on a system lua: Apple Silicon runners
+# have none in the default search path).
+include_directories(rime/lua/lib/lua)
 
 aux_source_directory(. rime_api_src)
 aux_source_directory(rime rime_base_src)
