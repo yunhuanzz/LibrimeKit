@@ -235,25 +235,6 @@ index 718d48d4..090a4d05 100644
            if (k->second.type < edge_type)
              edge_type = k->second.type;
            ++k;
-diff --git a/src/rime/gear/poet.cc b/src/rime/gear/poet.cc
-index 7cf9ce17..0f3dda94 100644
---- a/src/rime/gear/poet.cc
-+++ b/src/rime/gear/poet.cc
-@@ -133,7 +133,13 @@ using UpdateLineCandidate = function<void (const Line& candidate)>;
- struct BeamSearch {
-   using State = LineCandidates;
- 
--  static constexpr int kMaxLineCandidates = 7;
-+  // Round 18 (hamster): was 7. A 2-syllable T9 input expands into dozens
-+  // of segmentations (abbreviation + 76 derive rules), and the correct
-+  // line was pruned before the language model ever saw it (fen|bie in
-+  // 分别什么时候, shi|bie|cheng in 识别成). 12 gives the correct
-+  // segmentation room to survive to rescoring; beam work scales
-+  // ~linearly, so this stays inside the keystroke budget.
-+  static constexpr int kMaxLineCandidates = 12;
- 
-   static void Initiate(State& initial_state) {
-     initial_state.emplace("", Line::kEmpty);
 diff --git a/src/rime/gear/script_translator.cc b/src/rime/gear/script_translator.cc
 index e220aed9..041de1ae 100644
 --- a/src/rime/gear/script_translator.cc
