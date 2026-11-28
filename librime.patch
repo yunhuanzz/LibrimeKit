@@ -1925,6 +1925,95 @@ index e40bc6df..1ab29362 100644
      if (ec) {
        LOG(ERROR) << "error backing up file " << backup.string();
        ++failure;
+diff --git a/src/rime_api.cc b/src/rime_api.cc
+index 211b9f80..fc8253ef 100644
+--- a/src/rime_api.cc
++++ b/src/rime_api.cc
+@@ -213,6 +213,31 @@ RIME_API void RimeClearComposition(RimeSessionId session_id) {
+   session->ClearComposition();
+ }
+ 
++RIME_API Bool RimeReplaceInput(RimeSessionId session_id, const char* input) {
++  if (!input)
++    return False;
++  an<Session> session(Service::instance().GetSession(session_id));
++  if (!session)
++    return False;
++  Context* ctx = session->context();
++  if (!ctx)
++    return False;
++  // Discard the old composition first, so no segment or candidate
++  // from the previous input can survive: segments are rebuilt from
++  // scratch for the new input below. Clear() fires one context
++  // update on the now-empty input, which translates nothing.
++  // set_input() then fires exactly one more update, which runs the
++  // single segmentation + translation pass for the whole input.
++  // The per-key processor pipeline (speller, selector, ...) is never
++  // entered: for plain input keys it only PushInput()es one char at a
++  // time, which is exactly what set_input() does in bulk.
++  // Nothing is committed and the commit history is untouched, so
++  // text the caller already committed stays committed exactly once.
++  ctx->Clear();
++  ctx->set_input(input);
++  return True;
++}
++
+ // output
+ 
+ static void rime_candidate_copy(RimeCandidate* dest, const an<Candidate>& src) {
+@@ -1041,6 +1066,7 @@ RIME_API RimeApi* rime_get_api() {
+     s_api.process_key = &RimeProcessKey;
+     s_api.commit_composition = &RimeCommitComposition;
+     s_api.clear_composition = &RimeClearComposition;
++    s_api.replace_input = &RimeReplaceInput;
+     s_api.get_commit = &RimeGetCommit;
+     s_api.free_commit = &RimeFreeCommit;
+     s_api.get_context = &RimeGetContext;
+diff --git a/src/rime_api.h b/src/rime_api.h
+index 24c4404e..ee89bfea 100644
+--- a/src/rime_api.h
++++ b/src/rime_api.h
+@@ -266,6 +266,24 @@ RIME_API Bool RimeProcessKey(RimeSessionId session_id, int keycode, int mask);
+ RIME_API Bool RimeCommitComposition(RimeSessionId session_id);
+ RIME_API void RimeClearComposition(RimeSessionId session_id);
+ 
++/*!
++ * Replace the composition input in one shot and translate it once.
++ * The current composition is discarded first, then `input` becomes
++ * the raw input and a single translation pass (segmentation +
++ * translation) runs, driven by the one context update from set_input().
++ * The per-key processor pipeline is bypassed entirely, so unlike
++ * RimeSimulateKeySequence() the cost is a single Compose pass no
++ * matter how long `input` is. This is the cheap primitive for
++ * re-entering a long input after a span edit, e.g. re-segmenting the
++ * remainder after the user taps a syllable in a 9-key keyboard.
++ * Nothing is committed and the commit history is untouched; text
++ * already committed by the caller stays the caller's responsibility.
++ * `input` must be a valid raw input string for the active schema
++ * (as returned by RimeGetInput); it is used verbatim.
++ * Returns False if the session does not exist or `input` is NULL.
++ */
++RIME_API Bool RimeReplaceInput(RimeSessionId session_id, const char* input);
++
+ // Output
+ 
+ RIME_API Bool RimeGetCommit(RimeSessionId session_id, RimeCommit* commit);
+@@ -556,6 +574,15 @@ typedef struct rime_api_t {
+   Bool (*delete_candidate)(RimeSessionId session_id, size_t index);
+   //! delete a candidate from current page.
+   Bool (*delete_candidate_on_current_page)(RimeSessionId session_id, size_t index);
++
++  //! Replace the composition input in one shot and translate once.
++  /*!
++   *  See RimeReplaceInput(): discards the current composition, sets
++   *  the raw input, and runs a single translation pass, bypassing
++   *  the per-key processor pipeline. Added in fork (round 18c);
++   *  appended at the end of the struct to preserve ABI layout.
++   */
++  Bool (*replace_input)(RimeSessionId session_id, const char* input);
+ } RimeApi;
+ 
+ //! API entry
 diff --git a/test/CMakeLists.txt b/test/CMakeLists.txt
 index 80fb5ddd..0cc6907a 100644
 --- a/test/CMakeLists.txt
